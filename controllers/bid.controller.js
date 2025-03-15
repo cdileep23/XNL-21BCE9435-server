@@ -87,12 +87,11 @@ exports.getBidsForJob = async (req, res) => {
     }
 
     // Check if user is the job poster
-    console.log('Job poster ID:', job.jobPoster.toString());
-console.log('User ID:', req.user._id);
+    
     if (job.jobPoster.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to view these bids' });
     }
-    console.log(job)
+
 
     const bids = await Bid.find({ job: jobId })
       .populate('freelancer', 'fullName email skills')
@@ -132,7 +131,7 @@ exports.getMyBids = async (req, res) => {
 // @access  Private (Job Poster only)
 exports.acceptBid = async (req, res) => {
   try {
-    console.log('ser', req.params.id)
+  
     const bid = await Bid.findById(req.params.id);
     if (!bid) {
       return res.status(404).json({ message: 'Bid not found' });

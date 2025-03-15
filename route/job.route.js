@@ -9,7 +9,7 @@ const {
   getMyJobs, 
   getAvailableJobs,
   applyForJob,
-  getMyApplications
+  getMyApplications,markJobAsCompleted
 } = require("../controllers/job.controller");
 const { check } = require('express-validator');
 
@@ -78,6 +78,11 @@ router.post(
     ]
   ],
   applyForJob
+);
+router.patch(
+  '/job/:id/complete',
+  userAuth, // Authentication middleware
+  markJobAsCompleted
 );
 
 module.exports = router;

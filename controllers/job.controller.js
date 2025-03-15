@@ -4,7 +4,7 @@ const User = require('../models/user.model');
 const Bid=require('../models/bid.model')
 const Chat=require('../models/chat.model')
 const { validationResult } = require('express-validator');
-
+const Payment=require('../models/payment.model')
 // @desc    Create a new job
 // @route   POST /api/jobs
 // @access  Private (Job Poster only)
@@ -202,8 +202,95 @@ exports.deleteJob = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+// Job completion and payment controller function
 
 
+// Updated markJobAsCompleted controller function to work with the actual Payment model
+
+exports.markJobAsCompleted = async (req, res) => {
+  try {
+    console.log("mark as completed");
+    const jobId = req.params.id;
+    
+    // Find the job by ID
+    const job = await Job.findById(jobId);
+    console.log("mark as completed");
+    console.log(job);
+    
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+    
+    // Check if the requester is the job poster
+    if (job.jobPoster.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to mark this job as completed' });
+    }
+    
+    // Check if job is in progress (has an accepted bid)
+    if (job.status !== 'in-progress') {
+      return res.status(400).json({
+        message: 'Only jobs in progress can be marked as completed'
+      });
+    }
+    
+    // Make sure there's a selected bid (renamed from acceptedBid to match schema)
+    if (!job.selectedBid) {
+      return res.status(400).json({
+        message: 'Cannot complete a job without an accepted bid'
+      });
+    }
+    
+    // Find the selected bid with freelancer info
+    const bid = await Bid.findById(job.selectedBid)
+      .populate('freelancer');
+    
+    if (!bid) {
+      return res.status(404).json({ message: 'Selected bid not found' });
+    }
+    
+    // Create a payment record
+    const payment = new Payment({
+      job: job._id,
+      bid: bid._id,
+      amount: bid.amount, // Using correct field from Bid schema
+      from: job.jobPoster,
+      to: bid.freelancer._id,
+      status: 'completed'
+    });
+    
+    await payment.save();
+    
+    // Update freelancer's moneyEarned (using correct field from User schema)
+    const freelancer = await User.findById(bid.freelancer._id);
+    freelancer.moneyEarned += bid.amount;
+    await freelancer.save();
+    
+    // Update job poster's moneySpent
+    const jobPoster = await User.findById(job.jobPoster);
+    jobPoster.moneySpent += bid.amount;
+    await jobPoster.save();
+    
+    // Update job status to completed
+    job.status = 'completed';
+    job.completedAt = new Date();
+    await job.save();
+    
+    res.json({
+      message: 'Job marked as completed and payment processed',
+      job,
+      payment
+    });
+    
+  } catch (error) {
+    console.error('Mark job as completed error:', error);
+    
+    if (error.kind === 'ObjectId') {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+    
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 // @desc    Get jobs created by the logged-in job poster
 // @route   GET /api/jobs/my-postings
 // @access  Private (Job Poster only)
