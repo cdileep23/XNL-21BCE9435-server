@@ -1,13 +1,11 @@
-// controllers/bidController.js
+
 const Bid = require('../models/bid.model');
 const Job = require('../models/job.model');
 const User = require('../models/user.model');
 const Chat = require('../models/chat.model');
 const { validationResult } = require('express-validator');
 
-// @desc    Create a new bid
-// @route   POST /api/bids
-// @access  Private (Freelancer only)
+
 exports.createBid = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -15,7 +13,6 @@ exports.createBid = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    // Check if user is a freelancer
     const user = await User.findById(req.user._id);
     if (user.userType !== 'freelancer') {
       return res.status(403).json({ message: 'Only freelancers can create bids' });
@@ -23,7 +20,7 @@ exports.createBid = async (req, res) => {
 
     const { jobId, amount, deliveryTime, proposal } = req.body;
 
-    // Check if job exists and is open
+ 
     const job = await Job.findById(jobId);
     if (!job) {
       return res.status(404).json({ message: 'Job not found' });
@@ -33,7 +30,7 @@ exports.createBid = async (req, res) => {
       return res.status(400).json({ message: 'Cannot bid on a job that is not open' });
     }
 
-    // Check if freelancer already placed a bid for this job
+   
     const existingBid = await Bid.findOne({
       job: jobId,
       freelancer: req.user._id
@@ -43,7 +40,7 @@ exports.createBid = async (req, res) => {
       return res.status(400).json({ message: 'You have already placed a bid for this job' });
     }
 
-    // Create bid
+
     const bid = await Bid.create({
       job: jobId,
       freelancer: req.user._id,
@@ -52,7 +49,6 @@ exports.createBid = async (req, res) => {
       proposal
     });
 
-    // Create a chat between job poster and freelancer if it doesn't exist
     let chat = await Chat.findOne({
       participants: { $all: [job.jobPoster, req.user._id] },
       job: jobId
@@ -73,9 +69,7 @@ exports.createBid = async (req, res) => {
   }
 };
 
-// @desc    Get bids for a job
-// @route   GET /api/bids/job/:jobId
-// @access  Private (Job Poster & Admin)
+
 exports.getBidsForJob = async (req, res) => {
   try {
     const { jobId } = req.params;
@@ -86,7 +80,7 @@ exports.getBidsForJob = async (req, res) => {
       return res.status(404).json({ message: 'Job not found' });
     }
 
-    // Check if user is the job poster
+
     
     if (job.jobPoster.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to view these bids' });
@@ -104,12 +98,9 @@ exports.getBidsForJob = async (req, res) => {
   }
 };
 
-// @desc    Get my bids (freelancer)
-// @route   GET /api/bids/my-bids
-// @access  Private (Freelancer only)
 exports.getMyBids = async (req, res) => {
   try {
-    // Check if user is a freelancer
+    
     const user = await User.findById(req.user._id);
     if (user.userType !== 'freelancer') {
       return res.status(403).json({ message: 'Only freelancers can access this endpoint' });
@@ -126,9 +117,7 @@ exports.getMyBids = async (req, res) => {
   }
 };
 
-// @desc    Accept a bid
-// @route   PUT /api/bids/:id/accept
-// @access  Private (Job Poster only)
+
 exports.acceptBid = async (req, res) => {
   try {
   
@@ -142,39 +131,39 @@ exports.acceptBid = async (req, res) => {
       return res.status(404).json({ message: 'Job not found' });
     }
     
-    // Check if user is the job poster
+   
     if (job.jobPoster.toString() !== req.user._id.toString()) {
 
       return res.status(403).json({ message: 'Not authorized to accept this bid' });
     }
     
-    // Check if job is still open
+
     if (job.status !== 'open') {
       return res.status(400).json({ message: 'Cannot accept bid for a job that is not open' });
     }
     
-    // Begin a transaction or series of operations
+  
     
-    // 1. Update this bid to accepted
+   
     bid.status = 'accepted';
     await bid.save();
     
-    // 2. Reject all other bids for this job
+   
     await Bid.updateMany(
       { 
         job: job._id, 
-        _id: { $ne: bid._id },  // Not equal to the current bid
-        status: 'pending'        // Only update pending bids
+        _id: { $ne: bid._id },  
+        status: 'pending'      
       },
       { status: 'rejected' }
     );
     
-    // 3. Update job status and selected bid
+   
     job.status = 'in-progress';
     job.selectedBid = bid._id;
     await job.save();
     
-    // 4. Create a chat between job poster and freelancer
+    
     const chat = await Chat.create({
       participants: [job.jobPoster, bid.freelancer],
       job: bid.job,
@@ -193,9 +182,7 @@ exports.acceptBid = async (req, res) => {
   }
 };
 
-// @desc    Reject a bid
-// @route   PUT /api/bids/:id/reject
-// @access  Private (Job Poster only)
+
 exports.rejectBid = async (req, res) => {
   try {
     const bid = await Bid.findById(req.params.id);
@@ -208,18 +195,18 @@ exports.rejectBid = async (req, res) => {
       return res.status(404).json({ message: 'Job not found' });
     }
 
-    // Check if user is the job poster
+ 
     if (job.jobPoster.toString() !== req.user._id.toString()) {
 
       return res.status(403).json({ message: 'Not authorized to reject this bid' });
     }
 
-    // Check if job is still open
+ 
     if (job.status !== 'open') {
       return res.status(400).json({ message: 'Cannot reject bid for a job that is not open' });
     }
 
-    // Update bid status
+
     bid.status = 'rejected';
     await bid.save();
 

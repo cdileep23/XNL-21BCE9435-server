@@ -5,9 +5,7 @@ const Bid=require('../models/bid.model')
 const Chat=require('../models/chat.model')
 const { validationResult } = require('express-validator');
 const Payment=require('../models/payment.model')
-// @desc    Create a new job
-// @route   POST /api/jobs
-// @access  Private (Job Poster only)
+
 exports.createJob = async (req, res) => {
     try {
       const errors = validationResult(req);
@@ -49,9 +47,6 @@ exports.createJob = async (req, res) => {
   };
   
 
-// @desc    Get all jobs
-// @route   GET /api/jobs
-// @access  Public
 exports.getJobs = async (req, res) => {
   try {
     const { keyword, minBudget, maxBudget, skills } = req.query;
@@ -93,9 +88,6 @@ exports.getJobs = async (req, res) => {
   }
 };
 
-// @desc    Get job by ID
-// @route   GET /api/jobs/:id 
-// @access  Public
 exports.getJobById = async (req, res) => {
   try {
     const job = await Job.findById(req.params.id)
@@ -118,9 +110,7 @@ exports.getJobById = async (req, res) => {
   }
 };
 
-// @desc    Update job
-// @route   PUT /api/jobs/:id
-// @access  Private (Job Poster only)
+
 exports.updateJob = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -166,9 +156,7 @@ exports.updateJob = async (req, res) => {
 };
 
 
-// @desc    Delete job
-// @route   DELETE /api/jobs/:id
-// @access  Private (Job Poster only)
+
 exports.deleteJob = async (req, res) => {
   try {
     const job = await Job.findById(req.params.id);
@@ -177,17 +165,16 @@ exports.deleteJob = async (req, res) => {
       return res.status(404).json({ message: 'Job not found' });
     }
 
-    // Check ownership
+   
     if (job.jobPoster.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to cancel this job' });
     }
 
-    // Only allow cancellation if job is still open
+ 
     if (job.status !== 'open') {
       return res.status(400).json({ message: 'Cannot cancel a job that is not open' });
     }
 
-    // Update job status to 'canceled'
     job.status = 'canceled';
     await job.save();
 
@@ -202,10 +189,7 @@ exports.deleteJob = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-// Job completion and payment controller function
 
-
-// Updated markJobAsCompleted controller function to work with the actual Payment model
 
 exports.markJobAsCompleted = async (req, res) => {
   try {
@@ -221,38 +205,36 @@ exports.markJobAsCompleted = async (req, res) => {
       return res.status(404).json({ message: 'Job not found' });
     }
     
-    // Check if the requester is the job poster
+  
     if (job.jobPoster.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to mark this job as completed' });
     }
     
-    // Check if job is in progress (has an accepted bid)
     if (job.status !== 'in-progress') {
       return res.status(400).json({
         message: 'Only jobs in progress can be marked as completed'
       });
     }
     
-    // Make sure there's a selected bid (renamed from acceptedBid to match schema)
+   
     if (!job.selectedBid) {
       return res.status(400).json({
         message: 'Cannot complete a job without an accepted bid'
       });
     }
     
-    // Find the selected bid with freelancer info
+
     const bid = await Bid.findById(job.selectedBid)
       .populate('freelancer');
     
     if (!bid) {
       return res.status(404).json({ message: 'Selected bid not found' });
     }
-    
-    // Create a payment record
+
     const payment = new Payment({
       job: job._id,
       bid: bid._id,
-      amount: bid.amount, // Using correct field from Bid schema
+      amount: bid.amount,
       from: job.jobPoster,
       to: bid.freelancer._id,
       status: 'completed'
@@ -260,17 +242,16 @@ exports.markJobAsCompleted = async (req, res) => {
     
     await payment.save();
     
-    // Update freelancer's moneyEarned (using correct field from User schema)
+  
     const freelancer = await User.findById(bid.freelancer._id);
     freelancer.moneyEarned += bid.amount;
     await freelancer.save();
     
-    // Update job poster's moneySpent
+
     const jobPoster = await User.findById(job.jobPoster);
     jobPoster.moneySpent += bid.amount;
     await jobPoster.save();
-    
-    // Update job status to completed
+
     job.status = 'completed';
     job.completedAt = new Date();
     await job.save();
@@ -291,12 +272,10 @@ exports.markJobAsCompleted = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-// @desc    Get jobs created by the logged-in job poster
-// @route   GET /api/jobs/my-postings
-// @access  Private (Job Poster only)
+
 exports.getMyJobs = async (req, res) => {
   try {
-    // Check if user is a job poster
+    
     const user = await User.findById(req.user._id);
     if (user.userType !== 'jobPoster') {
       return res.status(403).json({ message: 'Only job posters can access this endpoint' });
@@ -313,20 +292,19 @@ exports.getMyJobs = async (req, res) => {
 };
 exports.getAvailableJobs = async (req, res) => {
     try {
-        // Check if user is a freelancer
+      
         const user = await User.findById(req.user._id);
         if (user.userType !== 'freelancer') {
             return res.status(403).json({ message: 'Only freelancers can access this endpoint' });
         }
 
-        // Get all job IDs where the freelancer has already placed a bid
+      
         const bids = await Bid.find({ freelancer: req.user._id }).distinct("job");
 
-        // Get all open jobs excluding those the freelancer has already bid on
         const jobs = await Job.find({
             status: 'open',
             jobPoster: { $ne: req.user._id },
-            _id: { $nin: bids }  // Exclude jobs with bids from the current freelancer
+            _id: { $nin: bids } 
         })
         .populate('jobPoster', 'fullName email')
         .sort({ createdAt: -1 });
@@ -344,8 +322,7 @@ exports.applyForJob = async (req, res) => {
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-      
-      // Check if user is a freelancer
+
       const user = await User.findById(req.user._id);
       if (user.userType !== 'freelancer') {
         return res.status(403).json({ message: 'Only freelancers can apply for jobs' });
@@ -354,7 +331,7 @@ exports.applyForJob = async (req, res) => {
       const jobId = req.params.id;
       const { amount, deliveryTime, proposal } = req.body;
       
-      // Check if job exists and is open
+    
       const job = await Job.findById(jobId);
       if (!job) {
         return res.status(404).json({ message: 'Job not found' });
@@ -364,7 +341,6 @@ exports.applyForJob = async (req, res) => {
         return res.status(400).json({ message: 'Cannot apply for a job that is not open' });
       }
       
-      // Check if freelancer already placed a bid for this job
       const existingBid = await Bid.findOne({
         job: jobId,
         freelancer: req.user._id
@@ -374,7 +350,7 @@ exports.applyForJob = async (req, res) => {
         return res.status(400).json({ message: 'You have already applied for this job' });
       }
       
-      // Create bid
+  
       const bid = await Bid.create({
         job: jobId,
         freelancer: req.user._id,
@@ -393,24 +369,21 @@ exports.applyForJob = async (req, res) => {
     }
   };
   
-  // @desc    Get jobs I've applied for (as a freelancer)
-  // @route   GET /api/jobs/my-applications
-  // @access  Private (Freelancer only)
+
   exports.getMyApplications = async (req, res) => {
     try {
-      // Check if user is a freelancer
+   
       const user = await User.findById(req.user._id);
       if (user.userType !== 'freelancer') {
         return res.status(403).json({ message: 'Only freelancers can access this endpoint' });
       }
       
-      // Get all bids by this freelancer 
+   
       const myBids = await Bid.find({ freelancer: req.user._id });
-      
-      // Get all job IDs from the bids
+
       const jobIds = myBids.map(bid => bid.job);
       
-      // Find all jobs that the freelancer has applied for
+   
       const appliedJobs = await Job.find({
         _id: { $in: jobIds }
       })
@@ -424,20 +397,19 @@ exports.applyForJob = async (req, res) => {
         })
         .sort({ createdAt: -1 });
       
-      // Add bid information to each job
       const jobsWithBidInfo = await Promise.all(appliedJobs.map(async (job) => {
-        // Find the current user's bid for this job
+    
         const myBid = await Bid.findOne({
           job: job._id,
           freelancer: req.user._id
         });
         
-        // Find all bids for this job
+       
         const allBids = await Bid.find({ job: job._id })
           .populate('freelancer', 'fullName email')
           
         
-        // Calculate some statistics
+    
         const bidStats = {
           count: allBids.length,
           avgAmount: allBids.reduce((sum, bid) => sum + bid.amount, 0) / allBids.length || 0,
@@ -455,7 +427,7 @@ exports.applyForJob = async (req, res) => {
             submittedAt: myBid.createdAt
           },
           bidStats,
-          allBids // Including all bids for context
+          allBids 
         };
       }));
       

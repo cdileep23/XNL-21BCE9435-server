@@ -2,14 +2,11 @@ const User = require('../models/user.model');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 
-// Generate JWT
+
 const generateToken = (userId,userType) => {
   return jwt.sign({ userId,userType }, process.env.JWT_SECRET, { expiresIn: '3d' });
 };
 
-// @desc    Register a new user
-// @route   POST /api/auth/register
-// @access  Public
 exports.register = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -50,14 +47,12 @@ exports.register = async (req, res) => {
 };
 
 
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
+
 exports.login = async (req, res) => {
   try {
     const { email, password, userType } = req.body;
 
-    // Check for missing fields
+    
     if (!email || !password || !userType) {
       return res.status(400).json({ message: 'Email, password, and userType are required' });
     }
@@ -78,7 +73,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Role check
+
     if (!user.userType || user.userType.toLowerCase() !== userType.toLowerCase()) {
       return res.status(403).json({ sucess:false, message: 'User role not matched' });
     }
@@ -87,8 +82,8 @@ exports.login = async (req, res) => {
     res.cookie("token", token, {
       expires: new Date(Date.now() + 8 * 3600000),
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Must be true for cross-domain in production
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Must be 'none' for cross-domain
+      secure: process.env.NODE_ENV === 'production', 
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', 
       path: '/'
     });
 
@@ -119,9 +114,7 @@ exports.getCurrentUser = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-// @desc    Logout user
-// @route   POST /api/auth/logout
-// @access  Private
+
 exports.logout = (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
@@ -133,10 +126,10 @@ exports.logout = (req, res) => {
 };
 exports.checkToken = (req, res) => {
   try {
-    // Extract token from cookies
+  
     const token = req.cookies?.token;
 
-    // Check if token exists
+ 
     if (!token) {
       return res.status(403).json({
         message: "No token provided",
@@ -144,7 +137,7 @@ exports.checkToken = (req, res) => {
       });
     }
 
-    // Verify token
+    
     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
       if (err) {
         return res.status(401).json({
@@ -153,12 +146,12 @@ exports.checkToken = (req, res) => {
         });
       }
 
-      // Token is valid, return success response with user details
+      
       res.status(200).json({
         message: "Token is valid",
         success: true,
         userId: decoded.userId,
-        userType: decoded.userType, // Optional if you need role-based logic
+        userType: decoded.userType
       });
     });
   } catch (error) {
@@ -172,18 +165,17 @@ exports.checkToken = (req, res) => {
 
 
 exports.updateProfile = async (req, res) => {
-  const  userId  = req.user._id; // Assuming userId is passed in params
-  const { fullName, skills, bio, profileImage } = req.body;
+  const  userId  = req.user._id; 
 
   try {
-    // Check if user exists
+
     const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Update fields if provided
+
     if (fullName) user.fullName = fullName;
     if (skills && Array.isArray(skills)) user.skills = skills;
     if (bio) user.bio = bio;

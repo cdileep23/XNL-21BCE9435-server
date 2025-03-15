@@ -1,11 +1,9 @@
-// controllers/chatController.js
+
 const Chat = require('../models/chat.model');
 const User = require('../models/user.model');
 const { validationResult } = require('express-validator');
 
-// @desc    Get all chats for a user
-// @route   GET /api/chats
-// @access  Private
+
 exports.getChats = async (req, res) => {
   try {
     const chats = await Chat.find({
@@ -15,9 +13,9 @@ exports.getChats = async (req, res) => {
       .populate('job', 'title')
       .sort({ lastActivity: -1 });
 
-    // Format the chats for the frontend
+  
     const formattedChats = chats.map(chat => {
-      // Get the other participant
+   
       const otherParticipants = chat.participants.filter(
         participant => participant._id.toString() !== req.user._id
       );
@@ -41,9 +39,7 @@ exports.getChats = async (req, res) => {
   }
 };
 
-// @desc    Get chat by ID with messages
-// @route   GET /api/chats/:id
-// @access  Private
+
 exports.getChatById = async (req, res) => {
   try {
     const chat = await Chat.findById(req.params.id)
@@ -54,12 +50,12 @@ exports.getChatById = async (req, res) => {
       return res.status(404).json({ message: 'Chat not found' });
     }
 
-    // Check if user is a participant
+
     if (!chat.participants.some(p => p._id.toString() === req.user._id)) {
       return res.status(403).json({ message: 'Not authorized to view this chat' });
     }
 
-    // Mark all unread messages as read
+  
     chat.messages.forEach(msg => {
       if (msg.sender.toString() !== req.user._id && !msg.read) {
         msg.read = true;
@@ -74,9 +70,7 @@ exports.getChatById = async (req, res) => {
   }
 };
 
-// @desc    Send a message
-// @route   POST /api/chats/:id/messages
-// @access  Private
+
 exports.sendMessage = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -91,12 +85,11 @@ exports.sendMessage = async (req, res) => {
       return res.status(404).json({ message: 'Chat not found' });
     }
 
-    // Check if user is a participant
+   
     if (!chat.participants.some(p => p.toString() === req.user._id)) {
       return res.status(403).json({ message: 'Not authorized to send messages in this chat' });
     }
 
-    // Add message
     const newMessage = {
       sender: req.user.userId,
       content,
@@ -109,7 +102,7 @@ exports.sendMessage = async (req, res) => {
     
     await chat.save();
 
-    // Return the newly added message
+    
     const addedMessage = chat.messages[chat.messages.length - 1];
 
     res.status(201).json(addedMessage);

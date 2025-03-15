@@ -15,7 +15,7 @@ const { check } = require('express-validator');
 
 const router = express.Router();
 
-// Create a new job
+
 router.post(
     '/job/create',
     [
@@ -32,22 +32,19 @@ router.post(
   );
   
 
-// Get all jobs (with optional filters)
+
 router.get('/job/all', userAuth, getJobs);
 
-// Get jobs that a freelancer can apply for
+
 router.get('/jobs/open/apply', userAuth, getAvailableJobs);
 
-// Get jobs created by the logged-in job poster
 router.get('/job/posted/me', userAuth, getMyJobs);
 
-// Get jobs I've applied for (as a freelancer)
 router.get('/job/applications/me', userAuth, getMyApplications);
 
-// Get job by ID
+
 router.get('/job/:id', userAuth, getJobById);
 
-// Update job
 router.patch(
   '/job/update/:id', 
   [
@@ -63,10 +60,10 @@ router.patch(
   updateJob
 );
 
-// Delete job
+
 router.patch('/job/:id/close', userAuth, deleteJob);
 
-// Apply for a job (create a bid)
+
 router.post(
   '/job/:id/apply',
   [
@@ -81,7 +78,7 @@ router.post(
 );
 router.patch(
   '/job/:id/complete',
-  userAuth, // Authentication middleware
+  userAuth,
   markJobAsCompleted
 );
 
