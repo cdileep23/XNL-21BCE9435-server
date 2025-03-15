@@ -2,6 +2,10 @@
 
 FreelanceHub is a platform designed to connect freelancers with job posters, facilitating remote work opportunities and project collaborations. Based on the database schemas, here's a brief explanation of how the platform functions:
 
+Backend services Deployed Link: https://freelancehubserver.onrender.com 
+
+API Documentation: https://periwinkle-mayonnaise-e3d.notion.site/1ae5e8d007ca80b180e4da7c85e7b01d
+
 ## Core Functionality
 
 The platform revolves around three main entities:
