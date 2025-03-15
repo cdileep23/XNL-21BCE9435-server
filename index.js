@@ -18,7 +18,7 @@ const server=http.createServer(app)
 const PORT = process.env.PORT ;
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? 'https://freelancehubclient.onrender.com'
+    ? 'https://freelance-hub-client-six.vercel.app'
     : 'http://localhost:5173',
   credentials: true
 }));
