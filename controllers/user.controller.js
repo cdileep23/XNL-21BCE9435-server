@@ -84,9 +84,12 @@ exports.login = async (req, res) => {
     }
 
     const token = generateToken(user._id, user.userType);
-
     res.cookie("token", token, {
       expires: new Date(Date.now() + 8 * 3600000),
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // Must be true for cross-domain in production
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Must be 'none' for cross-domain
+      path: '/'
     });
 
     res.json({
