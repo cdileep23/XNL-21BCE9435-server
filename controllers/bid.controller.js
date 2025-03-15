@@ -87,9 +87,12 @@ exports.getBidsForJob = async (req, res) => {
     }
 
     // Check if user is the job poster
-    if (job.jobPoster.toString() !== req.user._id) {
+    console.log('Job poster ID:', job.jobPoster.toString());
+console.log('User ID:', req.user._id);
+    if (job.jobPoster.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to view these bids' });
     }
+    console.log(job)
 
     const bids = await Bid.find({ job: jobId })
       .populate('freelancer', 'fullName email skills')
@@ -128,54 +131,68 @@ exports.getMyBids = async (req, res) => {
 // @route   PUT /api/bids/:id/accept
 // @access  Private (Job Poster only)
 exports.acceptBid = async (req, res) => {
-    try {
-      const bid = await Bid.findById(req.params.id);
-      if (!bid) {
-        return res.status(404).json({ message: 'Bid not found' });
-      }
-      
-      const job = await Job.findById(bid.job);
-      if (!job) {
-        return res.status(404).json({ message: 'Job not found' });
-      }
-      
-      // Check if user is the job poster
-      if (job.jobPoster.toString() !== req.user._id) {
-        return res.status(403).json({ message: 'Not authorized to accept this bid' });
-      }
-      
-      // Check if job is still open
-      if (job.status !== 'open') {
-        return res.status(400).json({ message: 'Cannot accept bid for a job that is not open' });
-      }
-      
-      // Update bid status
-      bid.status = 'accepted';
-      await bid.save();
-      
-      // Update job
-      job.status = 'in-progress';
-      job.selectedBid = bid._id;
-      await job.save();
-      
-      // Create a chat between job poster and freelancer
-      const chat = await Chat.create({
-        participants: [job.jobPoster, bid.freelancer],
-        job: bid.job,
-        messages: []
-      });
-      
-      res.json({ 
-        message: 'Bid accepted successfully', 
-        bid, 
-        job,
-        chatId: chat._id 
-      });
-    } catch (error) {
-      console.error('Accept bid error:', error);
-      res.status(500).json({ message: 'Server error' });
+  try {
+    console.log('ser', req.params.id)
+    const bid = await Bid.findById(req.params.id);
+    if (!bid) {
+      return res.status(404).json({ message: 'Bid not found' });
     }
-  };
+    
+    const job = await Job.findById(bid.job);
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+    
+    // Check if user is the job poster
+    if (job.jobPoster.toString() !== req.user._id.toString()) {
+
+      return res.status(403).json({ message: 'Not authorized to accept this bid' });
+    }
+    
+    // Check if job is still open
+    if (job.status !== 'open') {
+      return res.status(400).json({ message: 'Cannot accept bid for a job that is not open' });
+    }
+    
+    // Begin a transaction or series of operations
+    
+    // 1. Update this bid to accepted
+    bid.status = 'accepted';
+    await bid.save();
+    
+    // 2. Reject all other bids for this job
+    await Bid.updateMany(
+      { 
+        job: job._id, 
+        _id: { $ne: bid._id },  // Not equal to the current bid
+        status: 'pending'        // Only update pending bids
+      },
+      { status: 'rejected' }
+    );
+    
+    // 3. Update job status and selected bid
+    job.status = 'in-progress';
+    job.selectedBid = bid._id;
+    await job.save();
+    
+    // 4. Create a chat between job poster and freelancer
+    const chat = await Chat.create({
+      participants: [job.jobPoster, bid.freelancer],
+      job: bid.job,
+      messages: []
+    });
+    
+    res.json({
+      message: 'Bid accepted successfully',
+      bid,
+      job,
+      chatId: chat._id
+    });
+  } catch (error) {
+    console.error('Accept bid error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 
 // @desc    Reject a bid
 // @route   PUT /api/bids/:id/reject
@@ -193,7 +210,8 @@ exports.rejectBid = async (req, res) => {
     }
 
     // Check if user is the job poster
-    if (job.jobPoster.toString() !== req.user._id) {
+    if (job.jobPoster.toString() !== req.user._id.toString()) {
+
       return res.status(403).json({ message: 'Not authorized to reject this bid' });
     }
 

@@ -9,7 +9,7 @@ const cors=require('cors')
 const userRouter=require('./route/user.router.js')
 
 const jobRouter=require('./route/job.route.js')
-
+const BidRouter=require('./route/bid.route.js')
 
 
 const app = express();
@@ -26,6 +26,7 @@ app.get("/", (req, res) => {
 
 app.use('/', userRouter)
 app.use('/', jobRouter)
+app.use('/',BidRouter)
 const startServer = async () => {
   try {
      await connectDB();

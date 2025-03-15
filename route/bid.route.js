@@ -25,7 +25,7 @@ router.post(
 // @route   GET /api/bids/job/:jobId
 // @desc    Get bids for a job
 // @access  Private (Job Poster only)
-router.get('/job/:jobId', userAuth, bidController.getBidsForJob);
+router.get('/job/:jobId/bids', userAuth, bidController.getBidsForJob);
 
 // @route   GET /api/bids/my-bids
 // @desc    Get my bids (freelancer)
@@ -35,11 +35,11 @@ router.get('/my-bids', userAuth, bidController.getMyBids);
 // @route   PUT /api/bids/:id/accept
 // @desc    Accept a bid
 // @access  Private (Job Poster only)
-router.put('/:id/accept', userAuth, bidController.acceptBid);
+router.patch('/bids/:id/accept', userAuth, bidController.acceptBid);
 
 // @route   PUT /api/bids/:id/reject
 // @desc    Reject a bid
 // @access  Private (Job Poster only)
-router.put('/:id/reject', userAuth, bidController.rejectBid);
+router.patch('/bids/:id/reject', userAuth, bidController.rejectBid);
 
 module.exports = router;

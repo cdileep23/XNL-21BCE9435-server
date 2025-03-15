@@ -64,7 +64,7 @@ router.patch(
 );
 
 // Delete job
-router.delete('/job/:id', userAuth, deleteJob);
+router.patch('/job/:id/close', userAuth, deleteJob);
 
 // Apply for a job (create a bid)
 router.post(

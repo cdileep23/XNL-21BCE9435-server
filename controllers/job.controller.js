@@ -135,7 +135,7 @@ exports.updateJob = async (req, res) => {
     }
 
     // Check ownership
-    if (job.jobPoster.toString() !== req.user._id) {
+    if (job.jobPoster.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to update this job' });
     }
 
@@ -149,21 +149,22 @@ exports.updateJob = async (req, res) => {
     job.title = title || job.title;
     job.description = description || job.description;
     job.budget = budget || job.budget;
-    job.deadline = deadline || job.deadline;
+    job.deadline = deadline ? new Date(deadline) : job.deadline;  // Convert to Date
     job.skillsRequired = skillsRequired || job.skillsRequired;
 
     const updatedJob = await job.save();
     res.json(updatedJob);
   } catch (error) {
     console.error('Update job error:', error);
-    
+
     if (error.kind === 'ObjectId') {
       return res.status(404).json({ message: 'Job not found' });
     }
-    
+
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 // @desc    Delete job
 // @route   DELETE /api/jobs/:id
@@ -177,27 +178,31 @@ exports.deleteJob = async (req, res) => {
     }
 
     // Check ownership
-    if (job.jobPoster.toString() !== req.user._id) {
-      return res.status(403).json({ message: 'Not authorized to delete this job' });
+    if (job.jobPoster.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to cancel this job' });
     }
 
-    // Only allow deletion if job is still open and has no bids
+    // Only allow cancellation if job is still open
     if (job.status !== 'open') {
-      return res.status(400).json({ message: 'Cannot delete job that is not open' });
+      return res.status(400).json({ message: 'Cannot cancel a job that is not open' });
     }
 
-    await job.remove();
-    res.json({ message: 'Job removed' });
+    // Update job status to 'canceled'
+    job.status = 'canceled';
+    await job.save();
+
+    res.json({ message: 'Job has been canceled' });
   } catch (error) {
-    console.error('Delete job error:', error);
-    
+    console.error('Cancel job error:', error);
+
     if (error.kind === 'ObjectId') {
       return res.status(404).json({ message: 'Job not found' });
     }
-    
+
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 // @desc    Get jobs created by the logged-in job poster
 // @route   GET /api/jobs/my-postings
